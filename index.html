@@ -196,6 +196,11 @@
 
   .footer-note{text-align:center;color:var(--gray-500);font-size:12px;margin-top:20px;}
 
+  .save-status{border-radius:10px;padding:11px 12px;font:600 13px 'Inter',sans-serif;text-align:center;}
+  .save-status.saving{background:var(--line);color:var(--gray-500);}
+  .save-status.success{background:#EAF7E6;color:#2F7A3D;}
+  .save-status.error{background:#FDEDEA;color:var(--clay);}
+
   select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%236B7E8F'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
 
   @media (max-width:420px){
@@ -221,8 +226,11 @@
       <h2 class="section-title">Dados da Partida</h2>
       <div id="setup-error" style="display:none;background:#FDEDEA;color:var(--clay);border:1.5px solid var(--clay);border-radius:10px;padding:10px 12px;font:600 13px 'Inter',sans-serif;margin-bottom:14px;"></div>
       <div class="field">
-        <label>Nome do atleta *</label>
-        <input type="text" id="in-atleta" placeholder="Ex: Maria Souza">
+        <label>Atleta *</label>
+        <select id="in-atleta-select" onchange="onAtletaSelectChange()">
+          <option value="">Carregando atletas...</option>
+        </select>
+        <input type="text" id="in-atleta-manual" placeholder="Digite o nome do atleta" style="display:none;margin-top:8px;">
       </div>
       <div class="field">
         <label>Adversário *</label>
@@ -365,6 +373,8 @@
       <div class="obs-list" id="rep-obs-list"></div>
     </div>
 
+    <div id="save-status" style="display:none;margin-bottom:10px;" class="save-status"></div>
+    <button class="btn btn-primary btn-block" onclick="saveToSupabase()" style="margin-bottom:10px;">💾 Salvar no sistema</button>
     <button class="btn btn-ball btn-block" onclick="sendWhatsApp()" style="margin-bottom:10px;">📲 Enviar placar no WhatsApp</button>
     <button class="btn btn-ghost btn-block" onclick="resetApp()">Iniciar nova partida</button>
   </div>
@@ -375,6 +385,48 @@ let M = null;      // active match state
 let history = [];  // undo stack (deep clones)
 let lastPointTag = null;
 let pendingServe = { ball:null, dir:null }; // serve info chosen before the point is confirmed
+
+// --- Supabase integration (public anon key, protected by row-level security) ---
+const SUPABASE_URL = "https://comekhpwmfbnqxyjwoxm.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWVraHB3bWZibnF4eWp3b3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MTc3NTUsImV4cCI6MjA5MjA5Mzc1NX0.jILHdo0kSopzoczuq6WDhA2vN5l3vmwhmfXJlGBxacg";
+
+async function fetchPlayers(){
+  const sel = document.getElementById('in-atleta-select');
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/players?select=id,name&order=name.asc`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const players = await res.json();
+    sel.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = players.length ? 'Selecione o atleta...' : 'Nenhum atleta cadastrado ainda';
+    sel.appendChild(placeholder);
+    players.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.name; opt.dataset.name = p.name;
+      sel.appendChild(opt);
+    });
+    const manualOpt = document.createElement('option');
+    manualOpt.value = '__manual__';
+    manualOpt.textContent = 'Outro (digitar nome)';
+    sel.appendChild(manualOpt);
+  } catch(err){
+    console.error('Erro ao carregar atletas do sistema:', err);
+    sel.innerHTML = '<option value="__manual__">Não foi possível carregar a lista — digite o nome</option>';
+    sel.value = '__manual__';
+    onAtletaSelectChange();
+  }
+}
+
+function onAtletaSelectChange(){
+  const sel = document.getElementById('in-atleta-select');
+  const manual = document.getElementById('in-atleta-manual');
+  manual.style.display = sel.value === '__manual__' ? 'block' : 'none';
+}
+
+fetchPlayers();
 
 function other(p){ return p==='a' ? 'b' : 'a'; }
 function wouldWinGame(p,o){ return p>=4 && (p-o)>=2; }
@@ -389,8 +441,17 @@ function newStats(){
   };
 }
 
+function resolveAtleta(){
+  const sel = document.getElementById('in-atleta-select');
+  if(sel.value === '__manual__' || sel.value === ''){
+    return { atleta: document.getElementById('in-atleta-manual').value.trim(), atletaId: null };
+  }
+  const opt = sel.selectedOptions[0];
+  return { atleta: opt.dataset.name || opt.textContent, atletaId: sel.value };
+}
+
 function startMatch(){
-  const atleta = document.getElementById('in-atleta').value.trim();
+  const { atleta, atletaId } = resolveAtleta();
   const adversario = document.getElementById('in-adversario').value.trim();
   const torneio = document.getElementById('in-torneio').value.trim();
   const errBox = document.getElementById('setup-error');
@@ -401,7 +462,7 @@ function startMatch(){
   }
   errBox.style.display = 'none';
   M = {
-    atleta, adversario, torneio,
+    atleta, atletaId, adversario, torneio,
     rodada: document.getElementById('in-rodada').value.trim(),
     categoria: document.getElementById('in-categoria').value.trim(),
     piso: document.getElementById('in-piso').value,
@@ -724,6 +785,7 @@ function servePct(s){ return s.total>0 ? Math.round((s.firstIn/s.total)*100)+'%'
 function serveDir(s){ const d=s.direction; return `${d.aberto}/${d.corpo}/${d.fechado}`; }
 
 function buildReport(){
+  document.getElementById('save-status').style.display = 'none';
   document.getElementById('rep-torneio').textContent = M.torneio + (M.rodada ? ' — '+M.rodada : '');
   document.getElementById('rep-title').textContent = `${M.atleta} vs ${M.adversario}`;
   document.getElementById('rep-sub').textContent = [M.categoria, M.piso, M.data, M.formatoLabel].filter(Boolean).join(' • ');
@@ -750,6 +812,54 @@ function buildReport(){
   ol.innerHTML = M.observations.length ? M.observations.map(o=>`
     <div class="obs-item"><span class="ctx">${o.ctx}</span><span class="txt">${escapeHTML(o.text)}</span></div>
   `).join('') : '<div class="empty-note">Nenhuma observação registrada.</div>';
+}
+
+function buildSupabasePayload(){
+  return {
+    player_id: M.atletaId || null,
+    player_name: M.atleta,
+    opponent_name: M.adversario,
+    tournament: M.torneio,
+    round: M.rodada || null,
+    category: M.categoria || null,
+    surface: M.piso,
+    match_date: M.data,
+    match_format: M.formatoLabel,
+    final_score: setScoreString(),
+    winner: M.winner==='a' ? M.atleta : M.adversario,
+    sets: M.sets,
+    stats: { atleta: M.stats.a, adversario: M.stats.b },
+    observations: M.observations
+  };
+}
+
+async function saveToSupabase(){
+  const box = document.getElementById('save-status');
+  box.style.display = 'block';
+  box.className = 'save-status saving';
+  box.textContent = 'Salvando...';
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/matches`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(buildSupabasePayload())
+    });
+    if(!res.ok){
+      const txt = await res.text().catch(()=> '');
+      throw new Error(txt || ('HTTP ' + res.status));
+    }
+    box.className = 'save-status success';
+    box.textContent = '✓ Relatório salvo no sistema com sucesso.';
+  } catch(err){
+    console.error('Erro ao salvar no Supabase:', err);
+    box.className = 'save-status error';
+    box.textContent = '✗ Não foi possível salvar agora. Verifique a conexão e tente de novo.';
+  }
 }
 
 function sendWhatsApp(){
@@ -781,12 +891,15 @@ function sendWhatsApp(){
 
 function resetApp(){
   M = null; history = [];
-  document.getElementById('in-atleta').value='';
+  document.getElementById('in-atleta-select').selectedIndex = 0;
+  document.getElementById('in-atleta-manual').value = '';
+  document.getElementById('in-atleta-manual').style.display = 'none';
   document.getElementById('in-adversario').value='';
   document.getElementById('in-torneio').value='';
   document.getElementById('in-rodada').value='';
   document.getElementById('in-categoria').value='';
   document.getElementById('in-data').value = todayISO();
+  document.getElementById('save-status').style.display = 'none';
   showScreen('screen-setup');
 }
 </script>
