@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Techset Match Tracker — Placar de Tênis para Coaches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B2540;
+    --court-900:#0E3A5C;
+    --court-700:#1B6FA8;
+    --court-500:#2E9BD6;
+    --ball:#C7D62E;
+    --clay:#B4472F;
+    --line:#F5F8FA;
+    --paper:#FFFFFF;
+    --gray-500:#6B7E8F;
+    --gray-200:#E1E8ED;
+    --radius:14px;
+    --shadow: 0 8px 24px rgba(11,37,64,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:linear-gradient(180deg, var(--line) 0%, #EAF1F6 100%);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:720px;margin:0 auto;padding:0 0 60px;}
+
+  /* Top bar */
+  .topbar{
+    display:flex;align-items:center;gap:12px;
+    padding:20px 20px 16px;
+  }
+  .logo-mark{
+    width:34px;height:34px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--ball) 0%, #9FAE1F 70%);
+    position:relative;flex-shrink:0;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.2);
+  }
+  .logo-mark::before, .logo-mark::after{
+    content:"";position:absolute;border:1.5px solid rgba(11,37,64,0.55);
+    border-radius:50%;width:44px;height:22px;top:5px;left:-5px;
+  }
+  .logo-mark::after{transform:rotate(90deg);}
+  .brand{line-height:1.1;}
+  .brand .eyebrow{
+    font:600 11px/1 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--court-500);
+  }
+  .brand .name{
+    font:700 20px/1.2 'Oswald',sans-serif;letter-spacing:.01em;color:var(--court-900);
+    text-transform:uppercase;
+  }
+
+  .screen{display:none;padding:0 20px;animation:fade .35s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .card{
+    background:var(--paper);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px;margin-bottom:16px;
+  }
+  h2.section-title{
+    font:600 13px/1 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gray-500);margin:0 0 16px;
+  }
+
+  /* Form */
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font:600 12.5px/1 'Inter',sans-serif;color:var(--court-900);margin-bottom:6px;
+    letter-spacing:.01em;
+  }
+  .field input, .field select, .field textarea{
+    width:100%;padding:11px 12px;border:1.5px solid var(--gray-200);border-radius:10px;
+    font:500 15px/1.3 'Inter',sans-serif;color:var(--ink);background:var(--line);
+    outline:none;transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--court-500);background:#fff;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border:none;border-radius:11px;font:600 14.5px/1 'Inter',sans-serif;
+    padding:13px 18px;cursor:pointer;transition:transform .1s, box-shadow .15s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--court-900);color:#fff;box-shadow:0 6px 16px rgba(14,58,92,.28);}
+  .btn-primary:hover{background:var(--court-700);}
+  .btn-ball{background:var(--ball);color:var(--ink);box-shadow:0 6px 16px rgba(199,214,46,.35);}
+  .btn-block{width:100%;}
+  .btn-ghost{background:transparent;color:var(--court-900);border:1.5px solid var(--gray-200);}
+  .btn-ghost:hover{border-color:var(--court-500);}
+  .btn-clay{background:var(--clay);color:#fff;}
+  .btn-sm{padding:8px 12px;font-size:13px;border-radius:9px;}
+
+  /* Scoreboard */
+  .scoreboard{
+    background:var(--court-900);border-radius:var(--radius);color:#fff;padding:18px 16px;
+    box-shadow:var(--shadow);margin-bottom:14px;position:relative;overflow:hidden;
+  }
+  .scoreboard::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(120deg, rgba(46,155,214,.25), transparent 60%);
+    pointer-events:none;
+  }
+  .sb-meta{
+    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;
+    font-family:'Oswald',sans-serif;position:relative;z-index:1;
+  }
+  .sb-meta .tour{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#AFD6EE;}
+  .sb-meta .setnum{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#AFD6EE;}
+  .sb-table{width:100%;border-collapse:collapse;position:relative;z-index:1;}
+  .sb-table td{padding:9px 6px;font-family:'JetBrains Mono',monospace;}
+  .sb-name-cell{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:15px;
+    display:flex;align-items:center;gap:8px;white-space:nowrap;
+  }
+  .serve-dot{width:8px;height:8px;border-radius:50%;background:var(--ball);flex-shrink:0;
+    box-shadow:0 0 0 3px rgba(199,214,46,.25);}
+  .serve-dot.off{background:transparent;box-shadow:none;}
+  .sb-set-score{font-size:16px;color:#CFE6F3;text-align:center;width:26px;}
+  .sb-set-score.current{color:var(--ball);font-weight:700;}
+  .sb-point{font-size:26px;font-weight:700;text-align:center;width:56px;color:#fff;}
+  .sb-point.bp{color:var(--ball);}
+  .sb-divider td{border-top:1px solid rgba(255,255,255,.14);}
+  .bp-flag{
+    position:relative;z-index:1;margin-top:6px;font:600 11.5px/1 'Inter',sans-serif;
+    color:var(--ball);letter-spacing:.06em;text-transform:uppercase;
+  }
+
+  .point-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .point-btn{
+    background:#fff;border:1.5px solid var(--gray-200);border-radius:12px;padding:16px 10px;
+    cursor:pointer;text-align:center;transition:.12s;
+  }
+  .point-btn:active{transform:scale(.97);background:var(--line);}
+  .point-btn .label{font:600 12px/1 'Inter',sans-serif;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;}
+  .point-btn .who{font:700 16px/1.2 'Oswald',sans-serif;color:var(--court-900);}
+
+  .util-row{display:flex;gap:10px;margin-bottom:16px;}
+
+  .tag-panel{
+    background:#fff;border:1.5px dashed var(--gray-200);border-radius:12px;padding:14px;margin-bottom:16px;
+  }
+  .tag-panel .tp-title{font:600 12.5px 'Inter',sans-serif;color:var(--gray-500);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
+  .tag-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    border:1.5px solid var(--gray-200);background:var(--line);border-radius:20px;
+    padding:8px 14px;font:600 13px 'Inter',sans-serif;cursor:pointer;color:var(--ink);
+  }
+  .chip:hover{border-color:var(--court-500);}
+  .chip.skip{color:var(--gray-500);border-style:dashed;}
+  .chip.selected{background:var(--court-900);border-color:var(--court-900);color:#fff;}
+
+  .obs-list{display:flex;flex-direction:column;gap:10px;max-height:260px;overflow-y:auto;}
+  .obs-item{
+    background:var(--line);border-radius:10px;padding:10px 12px;border-left:3px solid var(--court-500);
+  }
+  .obs-item .ctx{font:600 11px 'JetBrains Mono',monospace;color:var(--court-700);display:block;margin-bottom:3px;}
+  .obs-item .txt{font-size:14px;line-height:1.4;}
+  .empty-note{color:var(--gray-500);font-size:13.5px;text-align:center;padding:14px 0;}
+
+  /* Report */
+  .report-header{
+    background:linear-gradient(135deg, var(--court-900), var(--court-700));
+    border-radius:var(--radius);padding:24px 20px;color:#fff;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .report-header .eyebrow{font:600 11px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ball);margin-bottom:6px;}
+  .report-header h1{font:700 26px/1.2 'Oswald',sans-serif;margin:0 0 4px;text-transform:uppercase;}
+  .report-header .sub{font-size:13.5px;color:#CFE6F3;}
+  .final-score{
+    font:700 30px/1 'JetBrains Mono',monospace;margin-top:16px;letter-spacing:.02em;
+  }
+  .final-score small{display:block;font:600 12px 'Inter',sans-serif;color:#AFD6EE;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+  .winner-tag{
+    display:inline-block;margin-top:10px;background:var(--ball);color:var(--ink);
+    font:700 12.5px 'Inter',sans-serif;padding:6px 12px;border-radius:20px;letter-spacing:.03em;
+  }
+
+  table.stats{width:100%;border-collapse:collapse;}
+  table.stats th{
+    font:600 11px 'Inter',sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-500);
+    text-align:center;padding:6px 4px 12px;
+  }
+  table.stats th:first-child{text-align:left;}
+  table.stats td{padding:9px 4px;text-align:center;font:600 15px 'JetBrains Mono',monospace;border-top:1px solid var(--gray-200);}
+  table.stats td:first-child{text-align:left;font:500 13.5px 'Inter',sans-serif;color:var(--ink);}
+  table.stats td.hl{color:var(--court-700);}
+
+  .footer-note{text-align:center;color:var(--gray-500);font-size:12px;margin-top:20px;}
+
+  select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%236B7E8F'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+
+  @media (max-width:420px){
+    .sb-point{font-size:22px;width:44px;}
+    .sb-name-cell{font-size:13.5px;}
+    .final-score{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo-mark"></div>
+    <div class="brand">
+      <div class="eyebrow">Coach Tools</div>
+      <div class="name">Techset Match Tracker</div>
+    </div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div class="screen active" id="screen-setup">
+    <div class="card">
+      <h2 class="section-title">Dados da Partida</h2>
+      <div id="setup-error" style="display:none;background:#FDEDEA;color:var(--clay);border:1.5px solid var(--clay);border-radius:10px;padding:10px 12px;font:600 13px 'Inter',sans-serif;margin-bottom:14px;"></div>
+      <div class="field">
+        <label>Nome do atleta *</label>
+        <input type="text" id="in-atleta" placeholder="Ex: Maria Souza">
+      </div>
+      <div class="field">
+        <label>Adversário *</label>
+        <input type="text" id="in-adversario" placeholder="Ex: Julia Lima">
+      </div>
+      <div class="field">
+        <label>Torneio *</label>
+        <input type="text" id="in-torneio" placeholder="Ex: Copa São Paulo de Tênis">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Fase / Rodada</label>
+          <input type="text" id="in-rodada" placeholder="Ex: Semifinal">
+        </div>
+        <div class="field">
+          <label>Categoria</label>
+          <input type="text" id="in-categoria" placeholder="Ex: Sub-14">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Piso</label>
+          <select id="in-piso">
+            <option value="Saibro">Saibro</option>
+            <option value="Duro">Duro (Hard)</option>
+            <option value="Grama">Grama</option>
+            <option value="Quadra rápida (indoor)">Quadra rápida (indoor)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Data</label>
+          <input type="date" id="in-data">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Formato do jogo</label>
+          <select id="in-formato">
+            <option value="3">Melhor de 3 sets</option>
+            <option value="5">Melhor de 5 sets</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Quem saca primeiro?</label>
+          <select id="in-server">
+            <option value="a">Atleta</option>
+            <option value="b">Adversário</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Desempate do set em 6-6</label>
+        <select id="in-desempate">
+          <option value="tiebreak">Tie-break (7 pontos)</option>
+          <option value="vantagem">Vantagem (sem tie-break, segue até 2 games de diferença)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="startMatch()">Iniciar partida</button>
+    </div>
+    <p class="footer-note">Preencha os dados antes de começar. O nome do atleta e o torneio aparecem no relatório final.</p>
+  </div>
+
+  <!-- MATCH SCREEN -->
+  <div class="screen" id="screen-match">
+    <div class="scoreboard">
+      <div class="sb-meta">
+        <span class="tour" id="sb-tour">—</span>
+        <span class="setnum" id="sb-setnum">SET 1</span>
+      </div>
+      <table class="sb-table" id="sb-table"></table>
+      <div class="bp-flag" id="bp-flag" style="display:none;">⚠ Break point</div>
+    </div>
+
+    <div class="tag-panel" id="serve-panel">
+      <div class="tp-title" id="serve-title">Saque</div>
+      <div class="tag-grid" id="serve-ball-grid"></div>
+      <div class="tag-grid" id="serve-dir-grid" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="point-controls">
+      <div class="point-btn" onclick="scorePoint('a')">
+        <span class="label">Ponto de</span>
+        <span class="who" id="btn-a-name">Atleta</span>
+      </div>
+      <div class="point-btn" onclick="scorePoint('b')">
+        <span class="label">Ponto de</span>
+        <span class="who" id="btn-b-name">Adversário</span>
+      </div>
+    </div>
+
+    <div class="tag-panel" id="tag-panel" style="display:none;">
+      <div class="tp-title">Como foi o ponto? (opcional)</div>
+      <div class="tag-grid" id="tag-grid"></div>
+    </div>
+
+    <div class="util-row">
+      <button class="btn btn-ghost btn-sm" onclick="undoLast()">↺ Desfazer último ponto</button>
+      <button class="btn btn-ghost btn-sm" onclick="openObsInput()">✎ Observação</button>
+    </div>
+
+    <div class="field" id="obs-input-wrap" style="display:none;">
+      <label>Adicionar observação sobre o jogo</label>
+      <textarea id="obs-text" rows="2" placeholder="Ex: perdendo consistência no forehand cruzado sob pressão"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary btn-sm" onclick="saveObservation()">Salvar</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeObsInput()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Observações da partida</h2>
+      <div class="obs-list" id="obs-list">
+        <div class="empty-note">Nenhuma observação ainda.</div>
+      </div>
+    </div>
+
+    <button class="btn btn-clay btn-block" id="btn-end-match" onclick="forceEndMatch()">Encerrar partida agora</button>
+  </div>
+
+  <!-- REPORT SCREEN -->
+  <div class="screen" id="screen-report">
+    <div class="report-header">
+      <div class="eyebrow" id="rep-torneio">Torneio</div>
+      <h1 id="rep-title">Atleta vs Adversário</h1>
+      <div class="sub" id="rep-sub">Fase • Categoria • Piso • Data</div>
+      <div class="final-score">
+        <small>Placar final</small>
+        <span id="rep-score">—</span>
+      </div>
+      <div class="winner-tag" id="rep-winner">Vencedor</div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Estatísticas comparadas</h2>
+      <table class="stats" id="rep-stats-table"></table>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Observações registradas</h2>
+      <div class="obs-list" id="rep-obs-list"></div>
+    </div>
+
+    <button class="btn btn-ball btn-block" onclick="sendWhatsApp()" style="margin-bottom:10px;">📲 Enviar placar no WhatsApp</button>
+    <button class="btn btn-ghost btn-block" onclick="resetApp()">Iniciar nova partida</button>
+  </div>
+</div>
+
+<script>
+let M = null;      // active match state
+let history = [];  // undo stack (deep clones)
+let lastPointTag = null;
+let pendingServe = { ball:null, dir:null }; // serve info chosen before the point is confirmed
+
+function other(p){ return p==='a' ? 'b' : 'a'; }
+function wouldWinGame(p,o){ return p>=4 && (p-o)>=2; }
+function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+document.getElementById('in-data').value = todayISO();
+
+function newStats(){
+  return {
+    aces:0, doubleFaults:0, winners:0, unforcedErrors:0, forcedErrors:0, breakPointsWon:0, breakPointsTotal:0,
+    serve: { total:0, firstIn:0, secondIn:0, direction:{ aberto:0, corpo:0, fechado:0 } }
+  };
+}
+
+function startMatch(){
+  const atleta = document.getElementById('in-atleta').value.trim();
+  const adversario = document.getElementById('in-adversario').value.trim();
+  const torneio = document.getElementById('in-torneio').value.trim();
+  const errBox = document.getElementById('setup-error');
+  if(!atleta || !adversario || !torneio){
+    errBox.textContent = '⚠ Preencha nome do atleta, adversário e torneio para começar.';
+    errBox.style.display = 'block';
+    return;
+  }
+  errBox.style.display = 'none';
+  M = {
+    atleta, adversario, torneio,
+    rodada: document.getElementById('in-rodada').value.trim(),
+    categoria: document.getElementById('in-categoria').value.trim(),
+    piso: document.getElementById('in-piso').value,
+    data: document.getElementById('in-data').value || todayISO(),
+    setsToWin: parseInt(document.getElementById('in-formato').value) === 5 ? 3 : 2,
+    formatoLabel: document.getElementById('in-formato').selectedOptions[0].text,
+    tiebreakRule: document.getElementById('in-desempate').value, // 'tiebreak' | 'vantagem'
+    sets: [],
+    setsWon: { a:0, b:0 },
+    currentGame: { a:0, b:0, isTiebreak:false, server: document.getElementById('in-server').value },
+    tbInitialServer: null,
+    tb: { a:0, b:0 },
+    stats: { a:newStats(), b:newStats() },
+    observations: [],
+    winner: null,
+    startTime: new Date().toISOString(),
+    endTime: null
+  };
+  history = [];
+  document.getElementById('btn-a-name').textContent = atleta;
+  document.getElementById('btn-b-name').textContent = adversario;
+  document.getElementById('sb-tour').textContent = torneio;
+  showScreen('screen-match');
+  resetServePanel();
+  renderMatch();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function snapshot(){
+  history.push({ M: JSON.parse(JSON.stringify(M)), temp: { a: tempSetGames.a, b: tempSetGames.b } });
+  if(history.length>60) history.shift();
+}
+
+function pointLabel(p,o){
+  if(p>=3 && o>=3){
+    if(p===o) return '40';
+    if(p-o===1) return 'AD';
+    return '40';
+  }
+  const labels=['0','15','30','40'];
+  return labels[Math.min(p,3)];
+}
+
+function isDeuceState(){
+  return !M.currentGame.isTiebreak && M.currentGame.a>=3 && M.currentGame.b>=3 && M.currentGame.a===M.currentGame.b;
+}
+
+// Real tiebreak serve rotation: server of point 0 = tbInitialServer, then alternates every 2 points.
+function tbServerAt(pointsPlayedBefore){
+  if(pointsPlayedBefore===0) return M.tbInitialServer;
+  const block = Math.floor((pointsPlayedBefore-1)/2);
+  return block % 2 === 0 ? other(M.tbInitialServer) : M.tbInitialServer;
+}
+function liveServer(){
+  const g = M.currentGame;
+  return g.isTiebreak ? tbServerAt(M.tb.a + M.tb.b) : g.server;
+}
+
+function scorePoint(winner){
+  if(!M || M.winner) return;
+  snapshot();
+  lastPointTag = null;
+
+  const g = M.currentGame;
+  const pointServer = liveServer();
+  applyPendingServe(pointServer);
+  let bpPlayer=null, wasBP=false;
+
+  if(!g.isTiebreak){
+    const server=g.server, receiver=other(server);
+    if(wouldWinGame(g[receiver]+1, g[server])){ wasBP=true; bpPlayer=receiver; }
+    g[winner]++;
+    if(wouldWinGame(g[winner], g[other(winner)])){
+      if(wasBP && bpPlayer===winner){ M.stats[winner].breakPointsWon++; }
+      if(wasBP){ M.stats[bpPlayer].breakPointsTotal++; }
+      finishGame(winner);
+      resetServePanel();
+      buildTagOptions(winner);
+      renderMatch();
+      return;
+    }
+    if(wasBP){ M.stats[bpPlayer].breakPointsTotal++; }
+  } else {
+    M.tb[winner]++;
+    if(M.tb[winner]>=7 && (M.tb[winner]-M.tb[other(winner)])>=2){
+      finishTiebreak(winner);
+      resetServePanel();
+      buildTagOptions(winner);
+      renderMatch();
+      return;
+    }
+  }
+  resetServePanel();
+  buildTagOptions(winner);
+  renderMatch();
+}
+
+function finishGame(winner){
+  const g = M.currentGame;
+  const cs = currentSetGames();
+  cs[winner]++;
+  M.currentGame = { a:0, b:0, isTiebreak:false, server: other(g.server) };
+
+  if((cs.a>=6 && (cs.a-cs.b)>=2) || (cs.b>=6 && (cs.b-cs.a)>=2)){
+    finalizeSet(cs);
+    return;
+  }
+  if(cs.a===6 && cs.b===6 && M.tiebreakRule==='tiebreak'){
+    M.currentGame.isTiebreak = true;
+    M.tb = { a:0, b:0 };
+    M.tbInitialServer = M.currentGame.server;
+  }
+  ensureSetsTemp(cs);
+}
+
+let tempSetGames = { a:0, b:0 };
+function currentSetGames(){ return tempSetGames; }
+function ensureSetsTemp(cs){ tempSetGames = cs; }
+
+function finishTiebreak(winner){
+  const cs = currentSetGames();
+  cs[winner]++;
+  // The player who served first in the tiebreak receives first in the next set.
+  M.currentGame = { a:0, b:0, isTiebreak:false, server: other(M.tbInitialServer) };
+  finalizeSet(cs, {a:M.tb.a, b:M.tb.b});
+}
+
+function finalizeSet(cs, tiebreak){
+  M.sets.push({ a:cs.a, b:cs.b, tiebreak: tiebreak || null });
+  if(cs.a>cs.b) M.setsWon.a++; else M.setsWon.b++;
+  tempSetGames = { a:0, b:0 };
+  M.tb = { a:0, b:0 };
+
+  if(M.setsWon.a>=M.setsToWin || M.setsWon.b>=M.setsToWin){
+    M.winner = M.setsWon.a>M.setsWon.b ? 'a':'b';
+    M.endTime = new Date().toISOString();
+  }
+}
+
+function undoLast(){
+  if(history.length===0) return;
+  const snap = history.pop();
+  M = snap.M;
+  tempSetGames = { a: snap.temp.a, b: snap.temp.b };
+  document.getElementById('tag-panel').style.display='none';
+  resetServePanel();
+  renderMatch();
+}
+
+function buildServePanel(){
+  if(!M || M.winner) return;
+  const serverPlayer = liveServer();
+  const serverName = serverPlayer==='a' ? M.atleta : M.adversario;
+  document.getElementById('serve-title').textContent = `Saque de ${serverName} — antes de confirmar o ponto`;
+
+  const ballGrid = document.getElementById('serve-ball-grid');
+  const dirGrid = document.getElementById('serve-dir-grid');
+  ballGrid.innerHTML = '';
+  dirGrid.innerHTML = '';
+
+  function makeChip(container, label, key, store, onSelect){
+    const chip = document.createElement('div');
+    chip.className='chip' + (pendingServe[store]===key ? ' selected' : '');
+    chip.textContent = label;
+    chip.onclick = ()=>{
+      pendingServe[store] = key;
+      container.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+      chip.classList.add('selected');
+      if(onSelect) onSelect();
+    };
+    container.appendChild(chip);
+  }
+
+  makeChip(ballGrid, '1º saque', 'first', 'ball');
+  makeChip(ballGrid, '2º saque', 'second', 'ball');
+  makeChip(ballGrid, 'Dupla falta', 'df', 'ball', ()=>{
+    // Double fault decides the point automatically: the receiver wins it.
+    scorePoint(other(serverPlayer));
+  });
+
+  makeChip(dirGrid, 'Aberto', 'aberto', 'dir');
+  makeChip(dirGrid, 'Corpo', 'corpo', 'dir');
+  makeChip(dirGrid, 'Fechado', 'fechado', 'dir');
+}
+
+function applyPendingServe(serverPlayer){
+  const s = M.stats[serverPlayer].serve;
+  if(pendingServe.ball==='first'){ s.total++; s.firstIn++; }
+  else if(pendingServe.ball==='second'){ s.total++; s.secondIn++; }
+  else if(pendingServe.ball==='df'){ s.total++; M.stats[serverPlayer].doubleFaults++; }
+  if(pendingServe.dir){ s.direction[pendingServe.dir]++; }
+}
+
+function resetServePanel(){
+  pendingServe = { ball:null, dir:null };
+  buildServePanel();
+}
+
+function buildTagOptions(pointWinner){
+  const grid = document.getElementById('tag-grid');
+  grid.innerHTML = '';
+  const winnerName = pointWinner==='a' ? M.atleta : M.adversario;
+  const loserName = pointWinner==='a' ? M.adversario : M.atleta;
+
+  const opts = [
+    {label:`Ace de ${winnerName}`, target:pointWinner, key:'aces'},
+    {label:`Winner de ${winnerName}`, target:pointWinner, key:'winners'},
+    {label:`Erro não forçado de ${loserName}`, target:other(pointWinner), key:'unforcedErrors'},
+    {label:`Erro forçado de ${loserName}`, target:other(pointWinner), key:'forcedErrors'}
+  ];
+  opts.forEach(o=>{
+    const chip = document.createElement('div');
+    chip.className='chip';
+    chip.textContent = o.label;
+    chip.onclick = ()=>{ M.stats[o.target][o.key]++; document.getElementById('tag-panel').style.display='none'; };
+    grid.appendChild(chip);
+  });
+  const skip = document.createElement('div');
+  skip.className='chip skip';
+  skip.textContent = 'fechar';
+  skip.onclick = ()=>{ document.getElementById('tag-panel').style.display='none'; };
+  grid.appendChild(skip);
+
+  document.getElementById('tag-panel').style.display='block';
+}
+
+function currentSetLabel(){ return `Set ${M.sets.length+1}`; }
+function currentScoreContext(){
+  const cs = currentSetGames();
+  const g = M.currentGame;
+  const pt = g.isTiebreak ? `TB ${M.tb.a}-${M.tb.b}` : `${pointLabel(g.a,g.b)}-${pointLabel(g.b,g.a)}`;
+  return `${currentSetLabel()} • Games ${cs.a}-${cs.b} • ${pt}`;
+}
+
+function openObsInput(){ document.getElementById('obs-input-wrap').style.display='block'; document.getElementById('obs-text').focus(); }
+function closeObsInput(){ document.getElementById('obs-input-wrap').style.display='none'; document.getElementById('obs-text').value=''; }
+function saveObservation(){
+  const txt = document.getElementById('obs-text').value.trim();
+  if(!txt) return;
+  M.observations.push({ ctx: currentScoreContext(), text: txt, time: new Date().toISOString() });
+  closeObsInput();
+  renderObservations();
+}
+
+function renderObservations(){
+  const list = document.getElementById('obs-list');
+  if(M.observations.length===0){ list.innerHTML = '<div class="empty-note">Nenhuma observação ainda.</div>'; return; }
+  list.innerHTML = M.observations.map(o=>`
+    <div class="obs-item"><span class="ctx">${o.ctx}</span><span class="txt">${escapeHTML(o.text)}</span></div>
+  `).reverse().join('');
+}
+
+function escapeHTML(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderMatch(){
+  const cs = currentSetGames();
+  const g = M.currentGame;
+
+  document.getElementById('sb-setnum').textContent = 'SET ' + (M.sets.length+1) + (g.isTiebreak ? ' • TIEBREAK':'');
+
+  const rows = [];
+  const totalSetsCols = Math.max(M.sets.length,1);
+
+  const srv = liveServer();
+  function rowFor(player, name){
+    let cells = `<td class="sb-name-cell"><span class="serve-dot ${srv===player?'':'off'}"></span>${escapeHTML(name)}</td>`;
+    M.sets.forEach(s=>{ cells += `<td class="sb-set-score">${s[player]}</td>`; });
+    cells += `<td class="sb-set-score current">${cs[player]}</td>`;
+    const ptVal = g.isTiebreak ? M.tb[player] : pointLabel(g[player], g[other(player)]);
+    const isBP = !g.isTiebreak && M.winner===null && wouldWinGame(g[other(player)]+ (other(g.server)===player?0:0),0)===false && false;
+    cells += `<td class="sb-point">${ptVal}</td>`;
+    return `<tr>${cells}</tr>`;
+  }
+
+  document.getElementById('sb-table').innerHTML =
+    rowFor('a', M.atleta) + `<tr class="sb-divider"><td colspan="10"></td></tr>` + rowFor('b', M.adversario);
+
+  const receiver = other(g.server);
+  const bpNow = !g.isTiebreak && wouldWinGame(g[receiver]+1, g[g.server]) && M.winner===null;
+  document.getElementById('bp-flag').style.display = bpNow ? 'block' : 'none';
+
+  renderObservations();
+
+  if(M.winner){
+    buildReport();
+    showScreen('screen-report');
+  }
+}
+
+let endMatchArmed = false;
+function forceEndMatch(){
+  if(!M || M.winner) return;
+  const btn = document.getElementById('btn-end-match');
+  if(!endMatchArmed){
+    endMatchArmed = true;
+    btn.textContent = 'Toque de novo para confirmar';
+    setTimeout(()=>{ endMatchArmed=false; btn.textContent='Encerrar partida agora'; }, 4000);
+    return;
+  }
+  endMatchArmed = false;
+  M.winner = M.setsWon.a >= M.setsWon.b ? 'a' : 'b';
+  M.endTime = new Date().toISOString();
+  buildReport();
+  showScreen('screen-report');
+}
+
+function setScoreString(){
+  return M.sets.map(s=>{
+    let str = `${s.a}-${s.b}`;
+    if(s.tiebreak){ const loserTB = s.a>s.b ? s.tiebreak.b : s.tiebreak.a; str += `(${loserTB})`; }
+    return str;
+  }).join(', ');
+}
+
+function servePct(s){ return s.total>0 ? Math.round((s.firstIn/s.total)*100)+'%' : '—'; }
+function serveDir(s){ const d=s.direction; return `${d.aberto}/${d.corpo}/${d.fechado}`; }
+
+function buildReport(){
+  document.getElementById('rep-torneio').textContent = M.torneio + (M.rodada ? ' — '+M.rodada : '');
+  document.getElementById('rep-title').textContent = `${M.atleta} vs ${M.adversario}`;
+  document.getElementById('rep-sub').textContent = [M.categoria, M.piso, M.data, M.formatoLabel].filter(Boolean).join(' • ');
+  document.getElementById('rep-score').textContent = setScoreString();
+  const winnerName = M.winner==='a' ? M.atleta : M.adversario;
+  document.getElementById('rep-winner').textContent = '🏅 Vencedor: ' + winnerName;
+
+  const rows = [
+    ['Sets', M.setsWon.a, M.setsWon.b],
+    ['Aces', M.stats.a.aces, M.stats.b.aces],
+    ['Duplas faltas', M.stats.a.doubleFaults, M.stats.b.doubleFaults],
+    ['1º saque dentro', servePct(M.stats.a.serve), servePct(M.stats.b.serve)],
+    ['Saques — aberto / corpo / fechado', serveDir(M.stats.a.serve), serveDir(M.stats.b.serve)],
+    ['Winners', M.stats.a.winners, M.stats.b.winners],
+    ['Erros não forçados', M.stats.a.unforcedErrors, M.stats.b.unforcedErrors],
+    ['Erros forçados', M.stats.a.forcedErrors, M.stats.b.forcedErrors],
+    ['Break points (convertidos/total)', `${M.stats.a.breakPointsWon}/${M.stats.a.breakPointsTotal}`, `${M.stats.b.breakPointsWon}/${M.stats.b.breakPointsTotal}`]
+  ];
+  let html = `<tr><th></th><th>${escapeHTML(M.atleta)}</th><th>${escapeHTML(M.adversario)}</th></tr>`;
+  rows.forEach(r=>{ html += `<tr><td>${r[0]}</td><td class="hl">${r[1]}</td><td>${r[2]}</td></tr>`; });
+  document.getElementById('rep-stats-table').innerHTML = html;
+
+  const ol = document.getElementById('rep-obs-list');
+  ol.innerHTML = M.observations.length ? M.observations.map(o=>`
+    <div class="obs-item"><span class="ctx">${o.ctx}</span><span class="txt">${escapeHTML(o.text)}</span></div>
+  `).join('') : '<div class="empty-note">Nenhuma observação registrada.</div>';
+}
+
+function sendWhatsApp(){
+  const winnerName = M.winner==='a' ? M.atleta : M.adversario;
+  let msg = `🎾 *Relatório de Partida*\n\n`;
+  msg += `👤 Atleta: ${M.atleta}\n`;
+  msg += `🆚 Adversário: ${M.adversario}\n`;
+  msg += `🏆 Torneio: ${M.torneio}${M.rodada ? ' — '+M.rodada : ''}\n`;
+  msg += `📅 Data: ${M.data}\n`;
+  if(M.categoria || M.piso) msg += `🎯 ${[M.categoria, M.piso].filter(Boolean).join(' | ')}\n`;
+  msg += `\n*Placar final:* ${setScoreString()}\n`;
+  msg += `🏅 Vencedor: ${winnerName}\n\n`;
+  msg += `*Estatísticas — ${M.atleta} x ${M.adversario}*\n`;
+  msg += `Aces: ${M.stats.a.aces} x ${M.stats.b.aces}\n`;
+  msg += `Duplas faltas: ${M.stats.a.doubleFaults} x ${M.stats.b.doubleFaults}\n`;
+  msg += `1º saque dentro: ${servePct(M.stats.a.serve)} x ${servePct(M.stats.b.serve)}\n`;
+  msg += `Saques (aberto/corpo/fechado): ${serveDir(M.stats.a.serve)} x ${serveDir(M.stats.b.serve)}\n`;
+  msg += `Winners: ${M.stats.a.winners} x ${M.stats.b.winners}\n`;
+  msg += `Erros não forçados: ${M.stats.a.unforcedErrors} x ${M.stats.b.unforcedErrors}\n`;
+  msg += `Break points: ${M.stats.a.breakPointsWon}/${M.stats.a.breakPointsTotal} x ${M.stats.b.breakPointsWon}/${M.stats.b.breakPointsTotal}\n`;
+  if(M.observations.length){
+    msg += `\n📝 Observações:\n`;
+    M.observations.forEach(o=>{ msg += `- (${o.ctx}) ${o.text}\n`; });
+  }
+  msg += `\n_Gerado pelo Techset Match Tracker_`;
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
+}
+
+function resetApp(){
+  M = null; history = [];
+  document.getElementById('in-atleta').value='';
+  document.getElementById('in-adversario').value='';
+  document.getElementById('in-torneio').value='';
+  document.getElementById('in-rodada').value='';
+  document.getElementById('in-categoria').value='';
+  document.getElementById('in-data').value = todayISO();
+  showScreen('screen-setup');
+}
+</script>
+</body>
+</html>
