@@ -112,7 +112,7 @@
   .sb-table td{padding:9px 6px;font-family:'JetBrains Mono',monospace;vertical-align:top;}
   .sb-name-cell{
     font-family:'Inter',sans-serif;font-weight:600;font-size:15px;
-    display:flex;align-items:flex-start;gap:8px;white-space:normal;width:auto;
+    display:flex;align-items:flex-start;gap:8px;white-space:normal;width:52%;
   }
   .sb-name-cell .name-text{min-width:0;overflow-wrap:break-word;line-height:1.25;}
   .serve-dot{width:8px;height:8px;border-radius:50%;background:var(--ball);flex-shrink:0;margin-top:5px;
@@ -806,8 +806,9 @@ function renderMatch(){
     return `<tr>${cells}</tr>`;
   }
 
+  const totalCols = M.sets.length + 3; // name + completed sets + current set + point
   document.getElementById('sb-table').innerHTML =
-    rowFor('a', M.atleta) + `<tr class="sb-divider"><td colspan="10"></td></tr>` + rowFor('b', M.adversario);
+    rowFor('a', M.atleta) + `<tr class="sb-divider"><td colspan="${totalCols}"></td></tr>` + rowFor('b', M.adversario);
 
   const receiver = other(g.server);
   const bpNow = !g.isTiebreak && wouldWinGame(g[receiver]+1, g[g.server]) && M.winner===null;
